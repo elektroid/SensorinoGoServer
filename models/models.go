@@ -6,6 +6,7 @@ import (
 )
 
 func InitOrm() {
+
 	// register model
 	orm.RegisterModel(new(Sensorino))
 	orm.RegisterModel(new(Service))

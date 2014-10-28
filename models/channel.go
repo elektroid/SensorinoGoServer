@@ -36,13 +36,19 @@ func (this *Channel) Create() error {
 		return err
 	}
 
-	if s, err := GetChannel(this.SensorinoAddress, this.ServiceIndex, this.Index); err != nil {
-		return errors.New(fmt.Sprintf("Channel with same index already exists, db id: %s", s.Id))
+	// we're supposed to be attached to a service (and a sensorino, but we're not responsible for the whole chain)
+	if _, err := GetService(this.SensorinoAddress, this.ServiceIndex); err != nil {
+		return errors.New(fmt.Sprintf("Unable to find Service to attach channel to %s", this.SensorinoAddress))
+	}
+
+	channels, errChans := GetChannels(this.SensorinoAddress, this.ServiceIndex)
+	if errChans == nil {
+		this.Index = int64(len(channels))
 	}
 
 	// insert
 	o := orm.NewOrm()
-	_, err := o.Insert(&this)
+	_, err := o.Insert(this)
 	return err
 }
 

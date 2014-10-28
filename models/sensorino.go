@@ -26,13 +26,14 @@ func (this *Sensorino) Create() error {
 		return err
 	}
 
-	if s, err := GetSensorino(this.Address); err != nil {
+	if s, err := GetSensorino(this.Address); err == nil {
 		return errors.New(fmt.Sprintf("Sensorino with same address exists %s", s.Name))
 	}
 
 	// insert
 	o := orm.NewOrm()
-	_, err := o.Insert(&this)
+	_, err := o.Insert(this)
+
 	return err
 }
 
@@ -59,7 +60,7 @@ func (this *Sensorino) Update() error {
 
 	// insert
 	o := orm.NewOrm()
-	_, err = o.Update(&this)
+	_, err = o.Update(this)
 	return err
 
 }

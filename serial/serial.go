@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+//TODO need to work on this library (or find something already done to talk to the base)
+
 // findArduino looks for the file that represents the Arduino
 // serial connection. Returns the fully qualified path to the
 // device if we are able to find a likely candidate for an
@@ -16,7 +18,7 @@ func findArduino() string {
 
 	// Look for what is mostly likely the Arduino device
 	for _, f := range contents {
-		if strings.Contains(f.Name(), "tty.usbserial") ||
+		if strings.Contains(f.Name(), "ttyACM") ||
 			strings.Contains(f.Name(), "ttyUSB") {
 			return "/dev/" + f.Name()
 		}

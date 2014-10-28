@@ -2,7 +2,7 @@ package models
 
 import (
 	"errors"
-	_ "fmt"
+	"fmt"
 	"github.com/astaxie/beego/orm"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -17,14 +17,14 @@ type Service struct {
 func GetService(address string, index int64) (Service, error) {
 	service := Service{}
 	o := orm.NewOrm()
-	err := o.QueryTable("sensorino").Filter("SensorinoAddress", address).Filter("Index", index).One(&service)
+	err := o.QueryTable("service").Filter("SensorinoAddress", address).Filter("Index", index).One(&service)
 	return service, err
 }
 
-func GetServices(address string) ([]Service, error) {
+func GetServices(address string) ([]*Service, error) {
 	o := orm.NewOrm()
-	var services []Service
-	_, err := o.QueryTable("sensorino").Filter("SensorinoAddress", address).All(&services)
+	var services []*Service
+	_, err := o.QueryTable("service").Filter("SensorinoAddress", address).All(&services)
 	return services, err
 }
 
@@ -32,9 +32,22 @@ func (this *Service) Create() error {
 	if err := this.Check(); err != nil {
 		return err
 	}
+
+	// Sensorino exists ?
+	if _, err := GetSensorino(this.SensorinoAddress); err != nil {
+		return errors.New(fmt.Sprintf("Unable to find Sensorino to attach service to %s", this.SensorinoAddress))
+	}
+
+	// Which index for this service ? Let's check existing ones
+	// TODO we could check for name collision
+	services, errServices := GetServices(this.SensorinoAddress)
+	if errServices == nil {
+		this.Index = int64(len(services))
+	}
+
 	// insert
 	o := orm.NewOrm()
-	_, err := o.Insert(&this)
+	_, err := o.Insert(this)
 	return err
 }
 
@@ -60,7 +73,7 @@ func (this *Service) Update() error {
 	}
 
 	o := orm.NewOrm()
-	_, err = o.Update(&this)
+	_, err = o.Update(this)
 	return err
 
 }
@@ -69,8 +82,9 @@ func (this *Service) Check() error {
 	if this.SensorinoAddress == "" {
 		return errors.New("Invalid service: no sensorino id")
 	}
-	if _, err := GetSensorino(this.SensorinoAddress); err != nil {
-		return errors.New("Failed to load sensorino")
+	_, err := GetSensorino(this.SensorinoAddress)
+	if err != nil {
+		return errors.New("Failed to load sensorino service is attached to")
 	}
 	return nil
 

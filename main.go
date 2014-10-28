@@ -25,11 +25,6 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	o := orm.NewOrm()
-	senso := models.Sensorino{Name: "slene", Address: "1.2.3.4"}
-	// insert
-	id, err := o.Insert(&senso)
-	fmt.Printf("ID: %d, ERR: %v\n", id, err)
 
 	beego.RESTRouter("/sensorino", &controllers.SensorinoController{})
 	beego.Run()
