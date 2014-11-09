@@ -19,10 +19,6 @@ type SensorinoController struct {
 	beego.Controller
 }
 
-type ServiceController struct {
-	beego.Controller
-}
-
 func (this *SensorinoController) Post() {
 	var senso models.Sensorino
 	errj := json.Unmarshal(this.Ctx.Input.RequestBody, &senso)
@@ -31,9 +27,7 @@ func (this *SensorinoController) Post() {
 		this.ServeJson()
 	}
 
-	// insert
-	o := orm.NewOrm()
-	_, err := o.Insert(&senso)
+	err := senso.Create()
 	if err != nil {
 		this.Data["json"] = err
 	} else {
@@ -43,36 +37,24 @@ func (this *SensorinoController) Post() {
 }
 
 func (this *SensorinoController) Get() {
-	pobjectId := this.Ctx.Input.Params[":objectId"]
-	fmt.Printf("ERR: %v\n", pobjectId)
-	o := orm.NewOrm()
-	objectId, err := strconv.ParseInt(pobjectId, 10, 32)
-	fmt.Printf("ERR: %v\n", err)
-	if err == nil {
+	sensorinoAddress := this.Ctx.Input.Params[":sensorinoAddress"]
 
-		// read one
-
-		s := models.Sensorino{Id: objectId}
-		fmt.Printf("about to read: %v\n", s)
-
-		err := o.Read(&s)
-		fmt.Printf("ERR: %v\n", s)
-
-		if err != nil {
-			this.Data["json"] = err
-		} else {
-			this.Data["json"] = s
-		}
-	} else {
-
-		var sensorinos []models.Sensorino
-		qs := o.QueryTable("sensorino")
-		_, err := qs.OrderBy("Id").All(&sensorinos)
+	if sensorinoAddress == "" {
+		sensorinos, err := models.GetSensorinos()
 		if err != nil {
 			this.Data["json"] = err
 		} else {
 			this.Data["json"] = sensorinos
 		}
+	} else {
+
+		s, err := models.GetSensorino(sensorinoAddress)
+		if err != nil {
+			this.Data["json"] = err
+		} else {
+			this.Data["json"] = s
+		}
+
 	}
 	this.ServeJson()
 }

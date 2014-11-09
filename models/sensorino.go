@@ -21,6 +21,13 @@ func GetSensorino(address string) (Sensorino, error) {
 	return senso, err
 }
 
+func GetSensorinos() ([]*Sensorino, error) {
+	o := orm.NewOrm()
+	var sensorinos []*Sensorino
+	_, err := o.QueryTable("sensorino").All(&sensorinos) // TODO Limit()
+	return sensorinos, err
+}
+
 func (this *Sensorino) Create() error {
 	if err := this.Check(); err != nil {
 		return err

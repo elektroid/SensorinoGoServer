@@ -1,7 +1,7 @@
 package models
 
 import (
-	"errors"
+	"beezo/common"
 	"fmt"
 	"github.com/astaxie/beego/orm"
 	_ "github.com/mattn/go-sqlite3"
@@ -14,28 +14,28 @@ type Service struct {
 	Name             string
 }
 
-func GetService(address string, index int64) (Service, error) {
+func GetService(address string, index int64) (Service, *common.Error) {
 	service := Service{}
 	o := orm.NewOrm()
 	err := o.QueryTable("service").Filter("SensorinoAddress", address).Filter("Index", index).One(&service)
-	return service, err
+	return service, common.ConvertError(err, common.X)
 }
 
-func GetServices(address string) ([]*Service, error) {
+func GetServices(address string) ([]*Service, *common.Error) {
 	o := orm.NewOrm()
 	var services []*Service
 	_, err := o.QueryTable("service").Filter("SensorinoAddress", address).All(&services)
-	return services, err
+	return services, common.ConvertError(err, common.X)
 }
 
-func (this *Service) Create() error {
+func (this *Service) Create() *common.Error {
 	if err := this.Check(); err != nil {
 		return err
 	}
 
 	// Sensorino exists ?
 	if _, err := GetSensorino(this.SensorinoAddress); err != nil {
-		return errors.New(fmt.Sprintf("Unable to find Sensorino to attach service to %s", this.SensorinoAddress))
+		return common.NewError(fmt.Sprintf("Unable to find Sensorino to attach service to %s", this.SensorinoAddress), common.X)
 	}
 
 	// Which index for this service ? Let's check existing ones
@@ -48,43 +48,43 @@ func (this *Service) Create() error {
 	// insert
 	o := orm.NewOrm()
 	_, err := o.Insert(this)
-	return err
+	return common.ConvertError(err, common.X)
 }
 
-func (this *Service) Delete() error {
-	return errors.New("TO BE SUPPLIED LATER")
+func (this *Service) Delete() *common.Error {
+	return common.NewError("TO BE SUPPLIED LATER", common.X)
 }
 
-func (this *Service) Update() error {
+func (this *Service) Update() *common.Error {
 
 	var err error
 	// if it's invalid, don't bother
 	if err = this.Check(); err != nil {
-		return err
+		return common.ConvertError(err, common.X)
 	}
 
 	// if it has no Id field, it was loaded from outside
 	if this.Id == 0 {
 		var s Service
 		if s, err = GetService(this.SensorinoAddress, this.Index); err != nil {
-			return errors.New("Changing address or index not supported yet")
+			return common.NewError("Changing address or index not supported yet", common.X)
 		}
 		this = &s
 	}
 
 	o := orm.NewOrm()
 	_, err = o.Update(this)
-	return err
+	return common.ConvertError(err, common.X)
 
 }
 
-func (this *Service) Check() error {
+func (this *Service) Check() *common.Error {
 	if this.SensorinoAddress == "" {
-		return errors.New("Invalid service: no sensorino id")
+		return common.NewError("Invalid service: no sensorino id", common.X)
 	}
 	_, err := GetSensorino(this.SensorinoAddress)
 	if err != nil {
-		return errors.New("Failed to load sensorino service is attached to")
+		return common.NewError("Failed to load sensorino service is attached to", common.SensorinoNotFound)
 	}
 	return nil
 

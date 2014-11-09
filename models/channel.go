@@ -1,7 +1,7 @@
 package models
 
 import (
-	"errors"
+	"beezo/common"
 	"fmt"
 	"github.com/astaxie/beego/orm"
 	_ "github.com/mattn/go-sqlite3"
@@ -17,28 +17,32 @@ type Channel struct {
 	DataType         string `orm:"size(100)"`
 }
 
-func GetChannel(address string, serviceIndex int64, index int64) (Channel, error) {
+func GetChannel(address string, serviceIndex int64, index int64) (Channel, *common.Error) {
 	channel := Channel{}
 	o := orm.NewOrm()
 	err := o.QueryTable("channel").Filter("SensorinoAddress", address).Filter("ServiceIndex", serviceIndex).Filter("Id", index).One(&channel)
-	return channel, err
+	return channel, common.ConvertError(err, common.X)
 }
 
-func GetChannels(address string, serviceIndex int64) ([]Channel, error) {
+func GetChannels(address string, serviceIndex int64) ([]Channel, *common.Error) {
 	o := orm.NewOrm()
 	var channels []Channel
 	_, err := o.QueryTable("channel").Filter("SensorinoAddress", address).Filter("ServiceIndex", serviceIndex).All(&channels)
-	return channels, err
+	return channels, common.ConvertError(err, common.X)
 }
 
-func (this *Channel) Create() error {
+func (this *Channel) Create() *common.Error {
 	if err := this.Check(); err != nil {
-		return err
+		return common.ConvertError(err, common.X)
 	}
 
 	// we're supposed to be attached to a service (and a sensorino, but we're not responsible for the whole chain)
 	if _, err := GetService(this.SensorinoAddress, this.ServiceIndex); err != nil {
-		return errors.New(fmt.Sprintf("Unable to find Service to attach channel to %s", this.SensorinoAddress))
+
+		return common.NewError(
+			fmt.Sprintf("Unable to find Service to attach channel to %s", this.SensorinoAddress),
+			common.ServiceNotFound,
+		)
 	}
 
 	channels, errChans := GetChannels(this.SensorinoAddress, this.ServiceIndex)
@@ -49,26 +53,26 @@ func (this *Channel) Create() error {
 	// insert
 	o := orm.NewOrm()
 	_, err := o.Insert(this)
-	return err
+	return common.ConvertError(err, common.X)
 }
 
-func (this *Channel) Delete() error {
-	return errors.New("TO BE SUPPLIED LATER")
+func (this *Channel) Delete() *common.Error {
+	return common.NewError("TO BE SUPPLIED LATER", common.X)
 }
 
-func (this *Channel) Update() error {
-	return errors.New("Operation not supported (need to code logs update too)")
+func (this *Channel) Update() *common.Error {
+	return common.NewError("Operation not supported (need to code logs update too)", common.X)
 }
 
-func (this *Channel) Check() error {
+func (this *Channel) Check() *common.Error {
 	if validAddress.MatchString(this.SensorinoAddress) == false {
-		return errors.New("Invalid address for sensorino")
+		return common.NewError("Invalid address for sensorino", common.X)
 	}
 	if this.DataType == "" {
-		return errors.New("No datatype")
+		return common.NewError("No datatype", common.X)
 	}
 	if this.Type == "" {
-		return errors.New("No type: ro or rw")
+		return common.NewError("No type: ro or rw", common.X)
 	}
 
 	return nil
