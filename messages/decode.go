@@ -6,15 +6,18 @@ package messages
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"reflect"
+	"strconv"
 )
 
 type BaseMessage struct {
 	From      string   `json:"from"`
 	To        string   `json:"to"`
 	Type      string   `json:"type"`
-	ServiceId []int    `json:"serviceId"`
+	ServiceId []int64  `json:"serviceId"`
 	DataType  []string `json:"dataType"`
-	Count     []int    `json:"count"`
+	Count     []int64  `json:"count"`
 	Data      map[string]interface{}
 }
 
@@ -29,6 +32,8 @@ type BaseMessage struct {
 
 func DecodeMessage(jsonMsg string) (*BaseMessage, error) {
 	b := &BaseMessage{}
+	b.DataType = []string{}
+	b.Count = []int64{}
 	var rawData map[string]interface{}
 	if err := json.Unmarshal([]byte(jsonMsg), &rawData); err != nil {
 		return nil, err
@@ -37,12 +42,21 @@ func DecodeMessage(jsonMsg string) (*BaseMessage, error) {
 	if !ok {
 		return nil, errors.New("No from in base message")
 	}
-	b.From = f.(string)
+
+	switch reflect.ValueOf(f).Kind() {
+	case reflect.String:
+		b.From = f.(string)
+	default:
+		return nil, errors.New("Invalid from in base message")
+	}
 	delete(rawData, "from")
 
 	to, ok := rawData["to"]
 	if !ok {
 		return nil, errors.New("No to in base message")
+	}
+	if reflect.ValueOf(to).Kind() != reflect.String {
+		return nil, errors.New("Invalid to in base message")
 	}
 	b.To = to.(string)
 	delete(rawData, "to")
@@ -55,9 +69,39 @@ func DecodeMessage(jsonMsg string) (*BaseMessage, error) {
 	delete(rawData, "type")
 
 	sIds, ok := rawData["serviceId"]
+	value := reflect.ValueOf(sIds)
+	fmt.Printf("%+v\n", sIds)
+	fmt.Println(value.Kind())
 	if ok {
-		b.ServiceId = sIds.([]int)
+		switch value.Kind() {
+		case reflect.Float32, reflect.Float64:
+			b.ServiceId = []int64{int64(value.Float())}
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			b.ServiceId = []int64{int64(value.Int())}
+		case reflect.Slice:
+			//we want either ints, floats or strings
+			b.ServiceId = make([]int64, value.Len())
+			for i := 0; i < value.Len(); i++ {
+
+				//fmt.Println(value.Index(0).Int())
+				switch value.Index(i).Elem().Kind() {
+				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+					b.ServiceId[i] = int64(value.Index(i).Elem().Int())
+				case reflect.String:
+					v, err := strconv.ParseInt(value.Index(i).Elem().String(), 10, 64)
+					if err != nil {
+						return nil, errors.New("Failed to decode service id (atoi)")
+					}
+					b.ServiceId[i] = v
+				}
+				//	fmt.Printf("+%v\n", value.Index(i).Elem().Kind())
+			}
+
+		default:
+			return nil, errors.New("Failed to decode service type, unexpected type")
+		}
 	}
+
 	// could check type to see if it's normal not to find it
 	delete(rawData, "serviceId")
 
@@ -66,3 +110,35 @@ func DecodeMessage(jsonMsg string) (*BaseMessage, error) {
 	return b, nil
 
 }
+
+/*
+func junk() {
+	//we want either ints, floats or strings
+	intValues := make([]int64, value.Len())
+	floatValues := make([]float64, value.Len())
+	stringValues := make([]string, value.Len())
+	for i := 0; i < value.Len(); i++ {
+
+		//fmt.Println(value.Index(0).Int())
+		switch value.Index(i).Elem().Kind() {
+		case reflect.Float32, reflect.Float64:
+			floatValues = append(floatValues, float64(value.Index(i).Elem().Float()))
+			if value.Len()-1 == i {
+				b.ServiceId = floatValues
+			}
+
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			intValues = append(intValues, int64(value.Index(i).Elem().Int()))
+			if value.Len()-1 == i {
+				b.ServiceId = intValues
+			}
+		case reflect.String:
+			stringValues = append(stringValues, value.Index(i).Elem().String())
+			if value.Len()-1 == i {
+				b.ServiceId = stringValues
+			}
+		}
+		//	fmt.Printf("+%v\n", value.Index(i).Elem().Kind())
+	}
+}
+*/
